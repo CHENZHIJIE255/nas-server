@@ -15,6 +15,7 @@
     <p>当前路径: {{ path || '/' }}</p>
     <button @click="up">⬆ 上级</button>
     <button @click="load">刷新</button>
+    <button @click="mkdir">📁 新建文件夹</button>
     <input type="file" @change="upload">
     <ul>
         <li v-for="f in files">
@@ -22,6 +23,12 @@
             <span v-else>📄 {{ f.name }} ({{ f.size }} B)</span>
             <a v-if="f.type === 'file'" :href="'/api/download?path=' + full(f.name)">下载</a>
             <button v-if="f.type === 'file'" @click="del(f.name)">删除</button>
+        </li>
+        <li v-for="f in files">
+            <span v-if="f.type === 'dir'" @click="into(f.name)" style="cursor:pointer">📁 {{ f.name }}</span>
+            <span v-else>📄 {{ f.name }} ({{ f.size }} B)</span>
+            <a v-if="f.type === 'file'" :href="'/api/download?path=' + full(f.name)">下载</a>
+            <button @click="del(f.name)">删除</button>
         </li>
     </ul>
 </div>
@@ -53,6 +60,15 @@
                 const fd = new FormData()
                 fd.append('file', file)
                 const res = await fetch('/api/files/upload?dir=' + this.path, { method: 'POST', body: fd })
+                const data = await res.json()
+                if (data.ok) this.load()
+                else alert(data.error)
+            },
+            async mkdir() {
+                const name = prompt('文件夹名（如 相册）'|| ' ').trim()
+                if (!name) return
+                const p = this.full(name)
+                const res = await fetch('/api/files/mkdir?path=' + encodeURIComponent(p), { method: 'POST' })
                 const data = await res.json()
                 if (data.ok) this.load()
                 else alert(data.error)
