@@ -3,26 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 16px; }
+        li { margin: 6px 0; }
+        button { margin-left: 8px; }
+    </style>
 </head>
 <body>
 <div id="app">
     <h1>NAS 文件管理器</h1>
+    <p>当前路径: {{ path || '/' }}</p>
+    <button @click="up">⬆ 上级</button>
     <button @click="load">刷新</button>
+    <input type="file" @change="upload">
     <ul>
-        <li v-for="f in files">{{ f.name }} - {{ f.size }}</li>
+        <li v-for="f in files">
+            <span v-if="f.type === 'dir'" @click="into(f.name)" style="cursor:pointer">📁 {{ f.name }}</span>
+            <span v-else>📄 {{ f.name }} ({{ f.size }} B)</span>
+            <a v-if="f.type === 'file'" :href="'/api/download?path=' + full(f.name)">下载</a>
+            <button v-if="f.type === 'file'" @click="del(f.name)">删除</button>
+        </li>
     </ul>
 </div>
 <script>
     const { createApp } = Vue
     createApp({
-        data() { return { files: [] } },
+        data() { return { files: [], path: '' } },
         methods: {
+            full(name) { return this.path ? this.path + '/' + name : name },
             async load() {
-                const res = await fetch('/api/files')
+                const res = await fetch('/api/files?path=' + this.path)
                 const data = await res.json()
+                if (data.error) { alert(data.error); return }
                 this.files = data.entries
+            },
+            into(name) { this.path = this.full(name); this.load() },
+            up() {
+                const i = this.path.lastIndexOf('/')
+                this.path = i < 0 ? '' : this.path.substring(0, i)
+                this.load()
+            },
+            async del(name) {
+                if (!confirm('删除 ' + name + ' ?')) return
+                await fetch('/api/files?path=' + this.full(name), { method: 'DELETE' })
+                this.load()
+            },
+            async upload(e) {
+                const file = e.target.files[0]
+                const fd = new FormData()
+                fd.append('file', file)
+                const res = await fetch('/api/files/upload?dir=' + this.path, { method: 'POST', body: fd })
+                const data = await res.json()
+                if (data.ok) this.load()
+                else alert(data.error)
             }
-        }
+        },
+        mounted() { this.load() }
     }).mount('#app')
 </script>
 </body>
