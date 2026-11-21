@@ -1,35 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAS 文件管理器</title>
+    <script src="/vue.global.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 16px; }
-        li { margin: 6px 0; }
-        button { margin-left: 8px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; max-width: 640px; margin: 0 auto; padding: 16px; }
+        h1 { font-size: 20px; margin-bottom: 8px; }
+        .bar { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; align-items: center; }
+        button { padding: 6px 12px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+        ul { list-style: none; }
+        li { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee; }
+        li .name { flex: 1; word-break: break-all; }
+        .muted { color: #999; font-size: 13px; }
     </style>
 </head>
 <body>
 <div id="app">
     <h1>NAS 文件管理器</h1>
-    <p>当前路径: {{ path || '/' }}</p>
-    <button @click="up">⬆ 上级</button>
-    <button @click="load">刷新</button>
-    <button @click="mkdir">📁 新建文件夹</button>
-    <input type="file" @change="upload">
+    <div class="muted">当前路径: /{{ path }}</div>
+    <div class="bar">
+        <button @click="up">⬆ 上级</button>
+        <button @click="load">🔄 刷新</button>
+        <button @click="mkdir">📁 新建文件夹</button>
+        <input type="file" @change="upload">
+    </div>
     <ul>
-        <li v-for="f in files">
-            <span v-if="f.type === 'dir'" @click="into(f.name)" style="cursor:pointer">📁 {{ f.name }}</span>
-            <span v-else>📄 {{ f.name }} ({{ f.size }} B)</span>
-            <a v-if="f.type === 'file'" :href="'/api/download?path=' + full(f.name)">下载</a>
-            <button v-if="f.type === 'file'" @click="del(f.name)">删除</button>
-        </li>
-        <li v-for="f in files">
-            <span v-if="f.type === 'dir'" @click="into(f.name)" style="cursor:pointer">📁 {{ f.name }}</span>
-            <span v-else>📄 {{ f.name }} ({{ f.size }} B)</span>
-            <a v-if="f.type === 'file'" :href="'/api/download?path=' + full(f.name)">下载</a>
+        <li v-for="f in files" :key="f.name">
+            <span class="name" @click="f.type === 'dir' && into(f.name)">
+                {{ f.type === 'dir' ? '📁' : '📄' }} {{ f.name }}
+            </span>
+            <span v-if="f.type === 'file'" class="muted">{{ f.size }} B</span>
+            <a v-if="f.type === 'file'" :href="'/api/download?path=' + enc(full(f.name))">下载</a>
             <button @click="del(f.name)">删除</button>
         </li>
+        <li v-if="files.length === 0" class="muted">（空目录）</li>
     </ul>
 </div>
 <script>
@@ -37,12 +44,13 @@
     createApp({
         data() { return { files: [], path: '' } },
         methods: {
+            enc(p) { return encodeURIComponent(p) },
             full(name) { return this.path ? this.path + '/' + name : name },
             async load() {
-                const res = await fetch('/api/files?path=' + this.path)
+                const res = await fetch('/api/files?path=' + this.enc(this.path))
                 const data = await res.json()
                 if (data.error) { alert(data.error); return }
-                this.files = data.entries
+                this.files = data.entries || []
             },
             into(name) { this.path = this.full(name); this.load() },
             up() {
@@ -50,27 +58,30 @@
                 this.path = i < 0 ? '' : this.path.substring(0, i)
                 this.load()
             },
-            async del(name) {
-                if (!confirm('删除 ' + name + ' ?')) return
-                await fetch('/api/files?path=' + this.full(name), { method: 'DELETE' })
-                this.load()
-            },
-            async upload(e) {
-                const file = e.target.files[0]
-                const fd = new FormData()
-                fd.append('file', file)
-                const res = await fetch('/api/files/upload?dir=' + this.path, { method: 'POST', body: fd })
+            async mkdir() {
+                const name = (prompt('文件夹名（如 相册）') || '').trim()
+                if (!name) return
+                const p = this.full(name)
+                const res = await fetch('/api/files/mkdir?path=' + this.enc(p), { method: 'POST' })
                 const data = await res.json()
                 if (data.ok) this.load()
                 else alert(data.error)
             },
-            async mkdir() {
-                const name = prompt('文件夹名（如 相册）'|| ' ').trim()
-                if (!name) return
-                const p = this.full(name)
-                const res = await fetch('/api/files/mkdir?path=' + encodeURIComponent(p), { method: 'POST' })
+            async del(name) {
+                if (!confirm('确定删除 ' + name + ' ？')) return
+                const res = await fetch('/api/files?path=' + this.enc(this.full(name)), { method: 'DELETE' })
                 const data = await res.json()
                 if (data.ok) this.load()
+                else alert(data.error)
+            },
+            async upload(e) {
+                const file = e.target.files[0]
+                if (!file) return
+                const fd = new FormData()
+                fd.append('file', file)
+                const res = await fetch('/api/files/upload?dir=' + this.enc(this.path), { method: 'POST', body: fd })
+                const data = await res.json()
+                if (data.ok) { this.load(); e.target.value = '' }
                 else alert(data.error)
             }
         },
