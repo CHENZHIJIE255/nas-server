@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+<body>
+<div id="app">
+    <h1>NAS 文件管理器</h1>
+    <button @click="load">刷新</button>
+    <ul>
+        <li v-for="f in files">{{ f.name }} - {{ f.size }}</li>
+    </ul>
+</div>
+<script>
+    const { createApp } = Vue
+    createApp({
+        data() { return { files: [] } },
+        methods: {
+            async load() {
+                const res = await fetch('/api/files')
+                const data = await res.json()
+                this.files = data.entries
+            }
+        }
+    }).mount('#app')
+</script>
+</body>
+</html>
