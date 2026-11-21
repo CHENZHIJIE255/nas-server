@@ -67,7 +67,12 @@ class FileController(private val fileTool: FileTool) {
         if (!targetDir.exists() || !targetDir.isDirectory) {
             return mapOf("ok" to false, "error" to "目标目录不存在: $dir")
         }
-        val target = File(targetDir, file.originalFilename ?: "unnamed")
+        val rawName = file.originalFilename ?: "unnamed"
+        val safeName = rawName
+            .replace('\\', '/')           // 反斜杠也当分隔符
+            .substringAfterLast('/')      // 只取最后一段（干掉 ../ 和路径）
+            .ifBlank { "unnamed" }
+        val target = fileTool.jailed(if (dir.isBlank()) safeName else "$dir/$safeName")
         file.transferTo(target)   // 流式写盘，不整块进内存
         return mapOf("ok" to true, "name" to target.name, "size" to target.length())
     }
