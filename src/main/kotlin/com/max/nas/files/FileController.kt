@@ -48,7 +48,7 @@ class FileController(private val fileTool: FileTool) {
     @DeleteMapping
     fun delete(@RequestParam path: String): Map<String, Any> {
         if (path.isBlank()) {
-            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
+            throw ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", Messages.ROOT_DELETE_FORBIDDEN)
         }
         val file = fileTool.jailed(path)
         if (!file.exists()) {
