@@ -1,6 +1,7 @@
 package com.max.nas.files
 
 import com.max.nas.common.FileTool
+import com.max.nas.common.Messages
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -21,22 +22,22 @@ data class FileEntry(
 @RequestMapping("/api/files")
 class FileController(private val fileTool: FileTool) {
     @GetMapping
-    fun getFiles(@RequestParam(defaultValue = "/") path: String) : Map<String, Any> {
+    fun getFiles(@RequestParam(defaultValue = Messages.ROOT_PATH) path: String) : Map<String, Any> {
 
         val dir = fileTool.jailed(path)
         if (!dir.exists() || !dir.isDirectory) {
-            return mapOf("error" to "目录不存在: $path")
+            return mapOf(Messages.ERROR to Messages.DIR_NOT_FOUND.format(path))
         }
         val entries = dir.listFiles()?.sortedWith(
             compareBy({ it.isFile }, { it.name.lowercase() })  // 目录在前，按名排序
         ) ?: emptyList()
 
         return mapOf(
-            "path" to dir.canonicalPath,
-            "entries" to entries.map {
+            Messages.PATH to dir.canonicalPath,
+            Messages.ENTRIES to entries.map {
                 FileEntry(
                     name = it.name,
-                    type = if (it.isDirectory) "dir" else "file",
+                    type = if (it.isDirectory) Messages.TYPE_DIR else Messages.TYPE_FILE,
                     size = if (it.isFile) it.length() else null,
                     modified = it.lastModified()
                 )
@@ -47,46 +48,46 @@ class FileController(private val fileTool: FileTool) {
     @DeleteMapping
     fun delete(@RequestParam path: String): Map<String, Any> {
         if (path.isBlank()) {
-            return mapOf("ok" to false, "error" to "禁止删除数据根目录")
+            return mapOf(Messages.OK to false, Messages.ERROR to Messages.ROOT_DELETE_FORBIDDEN)
         }
         val file = fileTool.jailed(path)
         if (!file.exists()) {
-            return mapOf("ok" to false, "error" to "不存在: $path")
+            return mapOf(Messages.OK to false, Messages.ERROR to Messages.NOT_FOUND.format(path))
         }
         val ok = file.deleteRecursively()   // Kotlin 标准库：递归删除，文件文件夹通吃！
-        return if (ok) mapOf("ok" to true, "deleted" to path)
-        else mapOf("ok" to false, "error" to "删除失败")
+        return if (ok) mapOf(Messages.OK to true, Messages.DELETED to path)
+        else mapOf(Messages.OK to false, Messages.ERROR to Messages.DELETE_FAILED)
     }
 
     @PostMapping("/upload")
     fun upload(
-        @RequestParam("file") file: MultipartFile,
-        @RequestParam(defaultValue = "/") dir: String
+        @RequestParam(Messages.TYPE_FILE) file: MultipartFile,
+        @RequestParam(defaultValue = Messages.ROOT_PATH) dir: String
     ): Map<String, Any> {
         val targetDir = fileTool.jailed(dir)
         if (!targetDir.exists() || !targetDir.isDirectory) {
-            return mapOf("ok" to false, "error" to "目标目录不存在: $dir")
+            return mapOf(Messages.OK to false, Messages.ERROR to Messages.UPLOAD_DIR_NOT_FOUND.format(dir))
         }
-        val rawName = file.originalFilename ?: "unnamed"
+        val rawName = file.originalFilename ?: Messages.UNNAMED_FILE
         val safeName = rawName
-            .replace('\\', '/')           // 反斜杠也当分隔符
-            .substringAfterLast('/')      // 只取最后一段（干掉 ../ 和路径）
-            .ifBlank { "unnamed" }
+            .replace('\\', '/')
+            .substringAfterLast('/')
+            .ifBlank { Messages.UNNAMED_FILE }
         val target = fileTool.jailed(if (dir.isBlank()) safeName else "$dir/$safeName")
-        file.transferTo(target)   // 流式写盘，不整块进内存
-        return mapOf("ok" to true, "name" to target.name, "size" to target.length())
+        file.transferTo(target)
+        return mapOf(Messages.OK to true, Messages.NAME to target.name, Messages.SIZE to target.length())
     }
 
     @PostMapping("/mkdir")
     fun mkdir(@RequestParam path: String): Map<String, Any> {
         val dir = fileTool.jailed(path)
         if (dir.exists()) {
-            return mapOf("ok" to false, "error" to "已存在: $path")
+            return mapOf(Messages.OK to false, Messages.ERROR to Messages.ALREADY_EXISTS.format(dir))
         }
         return if (dir.mkdirs()) {
-            mapOf("ok" to true, "created" to path)
+            mapOf(Messages.OK to true, Messages.CREATED to path)
         } else {
-            mapOf("ok" to false, "error" to "创建失败")
+            mapOf(Messages.OK to false, Messages.ERROR to Messages.CREATE_FAILED)
         }
     }
 }

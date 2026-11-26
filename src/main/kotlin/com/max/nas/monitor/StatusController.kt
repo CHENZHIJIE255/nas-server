@@ -1,5 +1,6 @@
 package com.max.nas.monitor
 
+import com.max.nas.common.Messages
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -9,10 +10,10 @@ class StatusController {
     @GetMapping("/api/status")
     fun status(): Map<String, Any>{
         return mapOf(
-            "cpuCores" to Runtime.getRuntime().availableProcessors(),
-            "javaVersion" to System.getProperty("java.version"),
-            "maxMemoryMB" to Runtime.getRuntime().maxMemory() / 1024 / 1024,
-            "message" to "NAS 服务器第一课，跑起来了！"
+            Messages.CPU_CORES to Runtime.getRuntime().availableProcessors(),
+            Messages.JAVA_VERSION to System.getProperty("java.version"),
+            Messages.MAX_MEMORY_MB to Runtime.getRuntime().maxMemory() / 1024 / 1024,
+            Messages.MESSAGE to Messages.SERVER_RUNNING
         )
     }
 }

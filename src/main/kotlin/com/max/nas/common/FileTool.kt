@@ -13,7 +13,7 @@ class FileTool(
         val root = File(dataRoot).canonicalFile          // 真实根（解析软链接）
         val target = File(root, path).canonicalFile      // 用户路径 + 解析 ..
         if (target != root && !target.path.startsWith(root.path + File.separator)) {
-            throw IllegalArgumentException("路径越界: $path")
+            throw IllegalArgumentException(Messages.PATH_OUT_OF_BOUNDS.format(path))
         }
         return target
     }
