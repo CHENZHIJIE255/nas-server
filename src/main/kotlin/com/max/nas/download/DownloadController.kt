@@ -2,7 +2,7 @@ package com.max.nas.download
 
 import com.max.nas.common.FileTool
 import com.max.nas.common.Messages
-import com.max.nas.monitor.ApiException
+import com.max.nas.files.ApiException
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus

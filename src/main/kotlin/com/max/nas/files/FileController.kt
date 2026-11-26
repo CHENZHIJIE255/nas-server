@@ -2,7 +2,6 @@ package com.max.nas.files
 
 import com.max.nas.common.FileTool
 import com.max.nas.common.Messages
-import com.max.nas.monitor.ApiException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
-import java.io.File
 
 data class FileEntry(
     val name: String,
@@ -28,7 +26,7 @@ class FileController(private val fileTool: FileTool) {
 
         val dir = fileTool.jailed(path)
         if (!dir.exists() || !dir.isDirectory) {
-            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.DIR_NOT_FOUND.format(path))
         }
         val entries = dir.listFiles()?.sortedWith(
             compareBy({ it.isFile }, { it.name.lowercase() })  // 目录在前，按名排序
@@ -50,7 +48,7 @@ class FileController(private val fileTool: FileTool) {
     @DeleteMapping
     fun delete(@RequestParam path: String): Map<String, Any> {
         if (path.isBlank()) {
-            throw ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", Messages.ROOT_DELETE_FORBIDDEN)
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
         }
         val file = fileTool.jailed(path)
         if (!file.exists()) {

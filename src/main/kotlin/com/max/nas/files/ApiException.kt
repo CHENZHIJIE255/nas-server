@@ -1,4 +1,4 @@
-package com.max.nas.monitor
+package com.max.nas.files
 
 import org.springframework.http.HttpStatus
 
