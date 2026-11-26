@@ -52,9 +52,9 @@ class FileController(private val fileTool: FileTool) {
         }
         val file = fileTool.jailed(path)
         if (!file.exists()) {
-            throw ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "OPERATION_FAILED", Messages.DELETE_FAILED)
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
         }
-        val ok = file.deleteRecursively()   // Kotlin 标准库：递归删除，文件文件夹通吃！
+        val ok = file.deleteRecursively()
         if (!ok) {
             throw ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "OPERATION_FAILED", Messages.DELETE_FAILED)
         }
