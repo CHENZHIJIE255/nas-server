@@ -1,6 +1,8 @@
 package com.max.nas.common
 
+import com.max.nas.monitor.ApiException
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import java.io.File
 
@@ -13,7 +15,7 @@ class FileTool(
         val root = File(dataRoot).canonicalFile          // 真实根（解析软链接）
         val target = File(root, path).canonicalFile      // 用户路径 + 解析 ..
         if (target != root && !target.path.startsWith(root.path + File.separator)) {
-            throw IllegalArgumentException(Messages.PATH_OUT_OF_BOUNDS.format(path))
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
         }
         return target
     }

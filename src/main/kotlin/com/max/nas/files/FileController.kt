@@ -2,6 +2,8 @@ package com.max.nas.files
 
 import com.max.nas.common.FileTool
 import com.max.nas.common.Messages
+import com.max.nas.monitor.ApiException
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -26,7 +28,7 @@ class FileController(private val fileTool: FileTool) {
 
         val dir = fileTool.jailed(path)
         if (!dir.exists() || !dir.isDirectory) {
-            return mapOf(Messages.ERROR to Messages.DIR_NOT_FOUND.format(path))
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.NOT_FOUND.format(path))
         }
         val entries = dir.listFiles()?.sortedWith(
             compareBy({ it.isFile }, { it.name.lowercase() })  // 目录在前，按名排序
@@ -48,15 +50,17 @@ class FileController(private val fileTool: FileTool) {
     @DeleteMapping
     fun delete(@RequestParam path: String): Map<String, Any> {
         if (path.isBlank()) {
-            return mapOf(Messages.OK to false, Messages.ERROR to Messages.ROOT_DELETE_FORBIDDEN)
+            throw ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", Messages.ROOT_DELETE_FORBIDDEN)
         }
         val file = fileTool.jailed(path)
         if (!file.exists()) {
-            return mapOf(Messages.OK to false, Messages.ERROR to Messages.NOT_FOUND.format(path))
+            throw ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "OPERATION_FAILED", Messages.DELETE_FAILED)
         }
         val ok = file.deleteRecursively()   // Kotlin 标准库：递归删除，文件文件夹通吃！
-        return if (ok) mapOf(Messages.OK to true, Messages.DELETED to path)
-        else mapOf(Messages.OK to false, Messages.ERROR to Messages.DELETE_FAILED)
+        if (!ok) {
+            throw ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "OPERATION_FAILED", Messages.DELETE_FAILED)
+        }
+        return mapOf(Messages.OK to true, Messages.DELETED to path)
     }
 
     @PostMapping("/upload")
@@ -66,7 +70,7 @@ class FileController(private val fileTool: FileTool) {
     ): Map<String, Any> {
         val targetDir = fileTool.jailed(dir)
         if (!targetDir.exists() || !targetDir.isDirectory) {
-            return mapOf(Messages.OK to false, Messages.ERROR to Messages.UPLOAD_DIR_NOT_FOUND.format(dir))
+            throw ApiException(HttpStatus.NOT_FOUND, "NOT_FOUND", Messages.UPLOAD_DIR_NOT_FOUND.format(dir))
         }
         val rawName = file.originalFilename ?: Messages.UNNAMED_FILE
         val safeName = rawName
@@ -82,12 +86,11 @@ class FileController(private val fileTool: FileTool) {
     fun mkdir(@RequestParam path: String): Map<String, Any> {
         val dir = fileTool.jailed(path)
         if (dir.exists()) {
-            return mapOf(Messages.OK to false, Messages.ERROR to Messages.ALREADY_EXISTS.format(dir))
+            throw ApiException(HttpStatus.CONFLICT, "ALREADY_EXISTS", Messages.ALREADY_EXISTS.format(path))
         }
-        return if (dir.mkdirs()) {
-            mapOf(Messages.OK to true, Messages.CREATED to path)
-        } else {
-            mapOf(Messages.OK to false, Messages.ERROR to Messages.CREATE_FAILED)
+        if (!dir.mkdirs()) {
+            throw ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "OPERATION_FAILED", Messages.CREATE_FAILED)
         }
+        return mapOf(Messages.OK to true, Messages.CREATED to path)
     }
 }

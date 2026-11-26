@@ -20,6 +20,7 @@ object Messages {
     const val JAVA_VERSION = "javaVersion"
     const val MAX_MEMORY_MB = "maxMemoryMB"
     const val MESSAGE = "message"
+    const val CODE = "code"
 
     // ── 契约值 ──
     const val TYPE_DIR = "dir"
